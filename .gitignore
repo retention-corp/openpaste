@@ -1,0 +1,19 @@
+.build/
+dist/
+.DS_Store
+.swiftpm/
+Packages/
+xcuserdata/
+*.xcworkspace/xcuserdata
+*.xcodeproj/xcuserdata
+node_modules/
+
+# Private / local-only
+.claude/
+.omc/
+.omx/
+CLAUDE.md
+CLAUDE_PROVIDER_FALLBACK.md
+HANDOFF_OPENPASTE.md
+scripts/sanitize-claude-session-thinking.mjs
+LightsailDefaultKey-*.pem

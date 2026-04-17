@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OpenPaste | Local clipboard cleanup for messy AI output</title>
+    <meta
+      name="description"
+      content="OpenPaste is a local, auditable clipboard cleaner for terminal output, web clipboard HTML, lists, and markdown tables."
+    >
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell nav-shell">
+        <a class="brand" href="#top">
+          <span class="brand-mark">op</span>
+          <span class="brand-text">OpenPaste</span>
+        </a>
+        <nav class="nav-links" aria-label="Primary">
+          <a href="#demo">Demo</a>
+          <a href="#tool">Tool</a>
+          <a href="#how">How</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="shell hero-shell">
+          <p class="eyebrow">local and auditable</p>
+          <h1>Copy once. Paste beautifully.</h1>
+          <p class="hero-copy">
+            OpenPaste rebuilds the core PrettyPaste idea in the open: clean up
+            wrapped terminal output, strip noisy clipboard HTML, preserve lists,
+            and turn pipe tables into real tables.
+          </p>
+          <div class="hero-actions">
+            <a class="button button-primary" href="#tool">Open the cleaner</a>
+            <button class="button button-secondary" id="load-terminal-sample" type="button">
+              Load terminal sample
+            </button>
+            <button class="button button-secondary" id="load-html-sample" type="button">
+              Load HTML sample
+            </button>
+          </div>
+          <p class="hero-meta">
+            No account. No background process. Runs in your browser with source you can inspect.
+          </p>
+        </div>
+      </section>
+
+      <section class="demo" id="demo">
+        <div class="shell demo-shell">
+          <div class="section-head">
+            <p class="eyebrow eyebrow-bright">terminal output</p>
+            <h2>Raw terminal output breaks when you paste it.</h2>
+            <p>Wrapped prose, stripped indentation, and broken lists make AI output annoying to reuse.</p>
+          </div>
+
+          <div class="terminal-card">
+            <div class="terminal-topbar">
+              <span class="dot dot-red"></span>
+              <span class="dot dot-yellow"></span>
+              <span class="dot dot-green"></span>
+              <span class="terminal-label">terminal — claude analyze</span>
+            </div>
+            <div class="terminal-body">
+              <p><span class="prompt">➜</span> claude analyze --output report.md</p>
+              <p class="muted-line">Analyzing codebase structure...</p>
+              <p>Found 47 files across 8 modules</p>
+              <p>Key findings:</p>
+              <p class="detail-line">  - auth.ts has 3 potential security issues</p>
+              <p class="detail-line">  - utils/format.ts lacks error handling</p>
+              <p class="detail-line">  - 12 components missing accessibility attributes</p>
+              <p>Recommendations:</p>
+              <p class="detail-line">  1. Add input validation to login()</p>
+              <p class="detail-line">  2. Wrap format calls in try/catch</p>
+              <p class="detail-line">  3. Add aria-labels to interactive elements</p>
+              <p class="muted-line">Report saved to report.md</p>
+            </div>
+          </div>
+
+          <div class="comparison-rail" aria-hidden="true">
+            <div class="comparison-stem"></div>
+            <div class="comparison-bar"></div>
+            <div class="comparison-arrow comparison-arrow-bad"></div>
+            <div class="comparison-arrow comparison-arrow-good"></div>
+          </div>
+
+          <div class="comparison-grid">
+            <article class="compare-card compare-card-bad">
+              <p class="compare-label compare-label-bad">Without OpenPaste</p>
+              <div class="compare-body">
+                <p>Analyzing codebase structure...</p>
+                <p>&nbsp;</p>
+                <p>Found 47 files across 8 modules</p>
+                <p>&nbsp;</p>
+                <p>Key findings:</p>
+                <p>- auth.ts has 3 potential security</p>
+                <p>issues</p>
+                <p>- utils/format.ts lacks error</p>
+                <p>handling</p>
+                <p>- 12 components missing</p>
+                <p>accessibility attributes</p>
+                <p>&nbsp;</p>
+                <p>Recommendations:</p>
+                <p>1. Add input validation to</p>
+                <p>login()</p>
+              </div>
+            </article>
+
+            <article class="compare-card compare-card-good">
+              <p class="compare-label compare-label-good">With OpenPaste</p>
+              <div class="compare-body compare-body-good">
+                <p>Analyzing codebase structure...</p>
+                <p>&nbsp;</p>
+                <p>Found 47 files across 8 modules</p>
+                <p>&nbsp;</p>
+                <p>Key findings:</p>
+                <p>  • auth.ts has 3 potential security issues</p>
+                <p>  • utils/format.ts lacks error handling</p>
+                <p>  • 12 components missing accessibility attributes</p>
+                <p>&nbsp;</p>
+                <p>Recommendations:</p>
+                <p>  1. Add input validation to login()</p>
+                <p>  2. Wrap format calls in try/catch</p>
+                <p>  3. Add aria-labels to interactive elements</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="steps-section">
+        <div class="shell">
+          <div class="section-head section-head-centered">
+            <h2>It just works.</h2>
+          </div>
+
+          <div class="steps-grid">
+            <article class="step-card">
+              <span class="step-index">01</span>
+              <h3>Paste anything</h3>
+              <p>Claude Code, Warp, Perplexity, Notion, Google Docs, Slack drafts, or any clipboard text.</p>
+            </article>
+            <article class="step-card">
+              <span class="step-index">02</span>
+              <h3>Clean it locally</h3>
+              <p>OpenPaste detects whether you pasted text or HTML and runs the right cleanup path automatically.</p>
+            </article>
+            <article class="step-card">
+              <span class="step-index">03</span>
+              <h3>Copy the result back</h3>
+              <p>Use cleaned plain text or rich HTML depending on where you want to paste next.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="paths-section">
+        <div class="shell">
+          <h2 class="section-title">Two paths. One cleanup flow.</h2>
+          <div class="paths-grid">
+            <article class="path-card">
+              <span class="path-tag">HTML path</span>
+              <h3>Perplexity, Notion, Google Docs</h3>
+              <p>
+                Web apps put styled HTML on the clipboard. OpenPaste strips bulky inline styles,
+                removes zero-width junk, and keeps links, headings, lists, and tables.
+              </p>
+            </article>
+            <article class="path-card">
+              <span class="path-tag">Text path</span>
+              <h3>Claude Code, Warp, any terminal</h3>
+              <p>
+                Wrapped output gets stitched back into readable paragraphs while bullet lists,
+                numbered steps, and fenced code blocks stay intact.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="tool-section" id="tool">
+        <div class="shell tool-shell">
+          <div class="section-head">
+            <p class="eyebrow">live cleaner</p>
+            <h2>Paste the messy version here.</h2>
+            <p>
+              Manual paste works everywhere. If your browser allows clipboard access, the direct paste button
+              can read the current clipboard too.
+            </p>
+          </div>
+
+          <div class="tool-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Raw input</h3>
+                <div class="panel-actions">
+                  <button class="button button-compact" id="paste-from-clipboard" type="button">
+                    Paste from clipboard
+                  </button>
+                  <button class="button button-compact button-ghost" id="clear-input" type="button">
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <textarea
+                id="raw-input"
+                class="input-area"
+                spellcheck="false"
+                placeholder="Paste messy terminal output or rich clipboard content here."
+                aria-label="Raw clipboard input"
+              ></textarea>
+              <p class="panel-note">
+                Tip: try normal paste here first. The app captures both <code>text/plain</code> and <code>text/html</code> when available.
+              </p>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Clean output</h3>
+                <div class="panel-actions">
+                  <button class="button button-compact" id="copy-clean-text" type="button">
+                    Copy clean text
+                  </button>
+                  <button class="button button-compact button-secondary" id="copy-clean-html" type="button">
+                    Copy rich HTML
+                  </button>
+                </div>
+              </div>
+              <textarea
+                id="clean-output"
+                class="input-area output-area"
+                spellcheck="false"
+                readonly
+                aria-label="Cleaned plain text output"
+              ></textarea>
+              <div class="stats" id="stats" aria-live="polite"></div>
+            </section>
+          </div>
+
+          <section class="preview-panel">
+            <div class="panel-head">
+              <h3>Rendered preview</h3>
+              <span class="preview-badge" id="path-badge">waiting for input</span>
+            </div>
+            <div class="preview-surface" id="rendered-preview">
+              <p class="preview-placeholder">
+                Paste something messy and the cleaned rich preview will show up here.
+              </p>
+            </div>
+          </section>
+
+          <p class="status-line" id="status-line" aria-live="polite">
+            OpenPaste is ready.
+          </p>
+        </div>
+      </section>
+
+      <section class="how-section" id="how">
+        <div class="shell how-shell">
+          <h2>Up and running in 60 seconds.</h2>
+          <ol class="how-list">
+            <li>
+              <span>1</span>
+              <div>
+                <h3>Open this page locally</h3>
+                <p>It is a plain static app. No server-side processing or clipboard exfiltration.</p>
+              </div>
+            </li>
+            <li>
+              <span>2</span>
+              <div>
+                <h3>Paste from your source</h3>
+                <p>Terminal output, AI chat answers, or rich HTML copied from a web app all work.</p>
+              </div>
+            </li>
+            <li>
+              <span>3</span>
+              <div>
+                <h3>Copy the cleaned version</h3>
+                <p>Use plain text for terminals and editors, or rich HTML for docs, Slack, and notes tools.</p>
+              </div>
+            </li>
+            <li>
+              <span>4</span>
+              <div>
+                <h3>Inspect and extend it</h3>
+                <p>The formatter logic is all in one module, covered by lightweight tests, and easy to adjust.</p>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-shell">
+        <div>
+          <p class="footer-brand">OpenPaste</p>
+          <p class="footer-copy">
+            A local, inspectable replacement for closed clipboard cleanup tools.
+          </p>
+        </div>
+        <div class="footer-links">
+          <a href="#demo">Demo</a>
+          <a href="#tool">Tool</a>
+          <a href="#how">How it works</a>
+        </div>
+      </div>
+    </footer>
+
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
