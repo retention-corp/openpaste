@@ -25,7 +25,7 @@ Built because closed-source clipboard tools ask you to trust a binary with every
 | Mode | Hotkey | What it does |
 | --- | --- | --- |
 | Keep Structure | `⌃⌘P` | Rejoins wrapped lines, keeps paragraphs, lists, tables, and code blocks. |
-| One Line | `⌃⇧⌘P` | Same cleanup, then flattens everything to a single line (strips list markers, collapses whitespace). Good for pasting into Notes, Google Docs, Slack. |
+| One Line | `⌃⌥⌘P` | Same cleanup, then flattens everything to a single line (strips list markers, collapses whitespace). Good for pasting into Notes, Google Docs, Slack. |
 
 Both modes are also exposed as menu items with a "Clean Only" variant that rewrites the clipboard without simulating a paste keystroke.
 

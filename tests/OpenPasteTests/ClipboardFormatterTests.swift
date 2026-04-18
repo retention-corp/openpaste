@@ -452,6 +452,243 @@ import Testing
   #expect(result.cleanText.contains("\n\n"))
 }
 
+@Test func absorbsBlankLineInsideWrappedKoreanBullet() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    ● 구조화된 인터뷰를 통해 수익 확장 플랜의 요구사항을
+
+    명확히 하겠습니다. 전담 인터뷰어가 타겟 질문을 던지고, 저는 Ambiguity Score로 명확도를 추적합니다. 점수가 0.2 이하로 떨어지면 마무리합니다.
+    """
+  )
+
+  #expect(
+    result.cleanText.contains(
+      "구조화된 인터뷰를 통해 수익 확장 플랜의 요구사항을 명확히 하겠습니다."
+    )
+  )
+  #expect(result.cleanText.contains("\n\n") == false)
+}
+
+@Test func joinsWrappedKoreanHeadingAcrossDisplayWidth() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    ## 매우 긴 한국어 제목이 터미널 너비를
+    넘어서 다음 줄로 이어지는 경우
+    """
+  )
+  #expect(
+    result.cleanText == "## 매우 긴 한국어 제목이 터미널 너비를 넘어서 다음 줄로 이어지는 경우"
+  )
+}
+
+@Test func joinsWrappedKoreanConnectiveEnding() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    "이 줄 끝에는 공백이 붙어있고   \n다음 줄로 이어지는 문장입니다."
+  )
+  #expect(result.cleanText == "이 줄 끝에는 공백이 붙어있고 다음 줄로 이어지는 문장입니다.")
+}
+
+@Test func joinsWrappedURLWithoutSpace() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    참고 링크: https://github.com/retention-corp/open
+    paste/issues/1 에 자세한 내용이 있습니다.
+    """
+  )
+  #expect(result.cleanText.contains("https://github.com/retention-corp/openpaste/issues/1"))
+  #expect(result.cleanText.contains("open paste") == false)
+}
+
+@Test func preservesClaudeCodeToolMarkerBlock() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    ⏺ Bash(swift test)
+      ⎿ Test Suite 'All tests' passed
+        Executed 28 tests
+    """
+  )
+  #expect(result.cleanText.contains("⏺ Bash(swift test)"))
+  #expect(result.cleanText.contains("⎿ Test Suite 'All tests' passed"))
+  #expect(result.cleanText.contains("\n  ⎿"))
+}
+
+@Test func preservesShellDollarPromptBlock() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    $ swift build
+    Building for debugging...
+    Build complete!
+    """
+  )
+  #expect(result.cleanText.contains("$ swift build\nBuilding"))
+  #expect(result.cleanText.contains("\nBuild complete!"))
+}
+
+@Test func mergesConsecutiveBulletsAcrossBlankLine() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    ● 첫 번째 불릿입니다.
+
+    ● 두 번째 불릿입니다.
+    """
+  )
+  #expect(result.cleanText == "- 첫 번째 불릿입니다.\n- 두 번째 불릿입니다.")
+}
+
+@Test func recognizesBlackCircleBulletAsListMarker() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    ● apple
+    ● banana
+    ● cherry
+    """
+  )
+  #expect(result.cleanText == "- apple\n- banana\n- cherry")
+}
+
+@Test func probeRealisticClaudeCodePatterns() async throws {
+  let formatter = ClipboardFormatter()
+  let fixtures: [(String, String)] = [
+    ("numbered-list-blank-wrap",
+     """
+     1. 구조화된 인터뷰를 통해 수익 확장 플랜의 요구사항을
+
+     명확히 하겠습니다.
+     2. 다음 단계는 질문을 정제하는 것입니다.
+     """),
+    ("bullet-terminated-then-paragraph",
+     """
+     ● 첫 번째 불릿은 완성된 문장입니다.
+
+     이건 별개 단락이어야 합니다.
+     """),
+    ("short-bullet-list-preserved",
+     """
+     ● apple
+     ● banana
+     ● cherry
+     """),
+    ("tool-markers",
+     """
+     ⏺ Bash(swift test)
+       ⎿ Test Suite 'All tests' passed
+         Executed 28 tests
+     """),
+    ("heading-wrapped-korean",
+     """
+     ## 매우 긴 한국어 제목이 터미널 너비를
+     넘어서 다음 줄로 이어지는 경우
+     """),
+    ("nested-bullets-wrapped",
+     """
+     ● 상위 불릿입니다. 이 줄은 짧습니다.
+       ● 하위 불릿에서 한국어가 길어서
+         다음 줄로 이어집니다.
+     """),
+    ("code-fence-then-text",
+     """
+     다음은 코드입니다:
+     ```swift
+     let x = "hello"
+     ```
+     코드 뒤에 오는 한국어 문장이 길어서
+     다음 줄로 넘어갑니다.
+     """),
+    ("indented-prompt-padding",
+     """
+       이 텍스트는 프롬프트 정렬 때문에 앞에 공백이 붙어서
+       복사되었습니다. 원래는 단락 하나입니다.
+     """),
+    ("bullet-english-lowercase-continuation",
+     """
+     ● This is an English bullet that was wrapped
+
+     continuing on this line in lowercase.
+     """),
+    ("bullet-english-capital-new-paragraph",
+     """
+     ● Buy groceries
+
+     Remember to pick up the kids.
+     """),
+    ("bold-inline-wrapped",
+     """
+     이 문장은 **볼드 텍스트**를 포함하고 있으며 터미널에서
+     길어서 다음 줄로 넘어갑니다.
+     """),
+    ("backtick-code-korean-wrap",
+     """
+     `ClipboardFormatter.cleanPlainText(...)` 함수는 한국어
+     문장이 잘려서 복사되면 복구합니다.
+     """),
+    ("trailing-spaces-wrapped",
+     "이 줄 끝에는 공백이 붙어있고   \n다음 줄로 이어지는 문장입니다."),
+    ("numbered-nested-sub",
+     """
+     1. 첫째 항목은 이렇게 길게 이어집니다
+        하위 설명이 들여쓰기로 붙습니다.
+     2. 둘째 항목입니다.
+     """),
+    ("ansi-escape-stripped",
+     "\u{001B}[31m빨간 에러 메시지\u{001B}[0m가 포함된\n터미널 출력의 줄바꿈 처리"),
+    ("crlf-line-endings",
+     "첫 번째 줄입니다\r\n두 번째 줄이 이어집니다"),
+    ("bracket-numbered-markers",
+     """
+     [1] 첫 번째 로그 엔트리는 꽤 길어서
+     다음 줄로 넘어갑니다.
+     [2] 두 번째 엔트리.
+     """),
+    ("mixed-eng-kor-wrap",
+     """
+     This is English text followed by 한국어 문장이
+     mixed together across the wrap boundary.
+     """),
+    ("long-url-wrapped",
+     """
+     참고 링크: https://github.com/retention-corp/open
+     paste/issues/1 에 자세한 내용이 있습니다.
+     """),
+    ("claude-code-thinking-indicator",
+     """
+     ✻ Thinking…
+
+     Let me check the code structure.
+     """),
+    ("consecutive-bullets-with-gap",
+     """
+     ● 첫 번째 불릿입니다.
+
+     ● 두 번째 불릿입니다.
+     """),
+    ("dollar-prompt-lines",
+     """
+     $ swift build
+     Building for debugging...
+     Build complete!
+     """),
+  ]
+
+  print("\n\n===== PROBE RESULTS =====")
+  for (name, input) in fixtures {
+    let result = formatter.cleanPlainText(input)
+    print("\n--- [\(name)] ---")
+    print("INPUT:")
+    print(input)
+    print("OUTPUT:")
+    print(result.cleanText)
+  }
+  print("===== END PROBE =====\n")
+}
+
 @Test func alwaysPrefersPlainTextWhenAvailable() async throws {
   let formatter = ClipboardFormatter()
   let result = formatter.clean(

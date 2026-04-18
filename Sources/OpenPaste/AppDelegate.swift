@@ -40,12 +40,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     let menu = NSMenu()
     menu.addItem(
-      withTitle: "Paste Keeping Structure  (⌃⌥⌘P)",
+      withTitle: "Paste Keeping Structure  (⌃⌘P)",
       action: #selector(handlePasteKeepStructure),
       keyEquivalent: ""
     )
     menu.addItem(
-      withTitle: "Paste as One Line  (⌃⇧⌥⌘P)",
+      withTitle: "Paste as One Line  (⌃⌥⌘P)",
       action: #selector(handlePasteOneLine),
       keyEquivalent: ""
     )
@@ -105,7 +105,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       try registry.register(
         id: 2,
         keyCode: UInt32(kVK_ANSI_P),
-        modifiers: UInt32(cmdKey | controlKey | shiftKey)
+        modifiers: UInt32(cmdKey | controlKey | optionKey)
       ) { [weak self] in
         log.info("hotkey fired: one-line")
         Task { @MainActor in

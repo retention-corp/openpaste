@@ -15,5 +15,6 @@ node_modules/
 CLAUDE.md
 CLAUDE_PROVIDER_FALLBACK.md
 HANDOFF_OPENPASTE.md
+SESSION_HANDOFF_*.md
 scripts/sanitize-claude-session-thinking.mjs
 LightsailDefaultKey-*.pem

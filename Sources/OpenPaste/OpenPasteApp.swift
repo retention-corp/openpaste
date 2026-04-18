@@ -12,7 +12,7 @@ struct OpenPasteApp: App {
         Text("Menu bar clipboard cleaner")
           .foregroundStyle(.secondary)
         Divider()
-        Text("Global shortcut: Control+Command+P (Shift for one-line)")
+        Text("Global shortcut: Control+Command+P (add Option for one-line)")
         Text("Use the menu bar item to clean the clipboard without pasting.")
         Text("Automatic paste requires Accessibility permission in System Settings.")
           .foregroundStyle(.secondary)

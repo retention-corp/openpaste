@@ -91,7 +91,7 @@ struct ClipboardFormatter {
   }
 
   private func flattenToOneLine(_ text: String) -> String {
-    let pattern = #"^(?:[-*•]|\d+[.)])\s+(.*)$"#
+    let pattern = #"^(?:[-*•●]|\d+[.)])\s+(.*)$"#
     let stripped = text
       .components(separatedBy: "\n")
       .map { line -> String in
@@ -502,6 +502,31 @@ struct ClipboardFormatter {
         while index < lines.count {
           let current = lines[index]
           if current.trimmingCharacters(in: .whitespaces).isEmpty {
+            var peek = index + 1
+            while peek < lines.count,
+                  lines[peek].trimmingCharacters(in: .whitespaces).isEmpty
+            {
+              peek += 1
+            }
+            if peek < lines.count {
+              let nextLine = lines[peek]
+              if isListItem(nextLine), isOrderedListItem(nextLine) == ordered {
+                index = peek
+                continue
+              }
+              if let lastListLine = listLines.last,
+                 listContinuesAcrossBlank(prev: lastListLine, next: nextLine),
+                 !isListItem(nextLine),
+                 !isFenceLine(nextLine),
+                 !looksLikeSectionLabel(nextLine),
+                 !(isTableLine(nextLine)
+                   && peek + 1 < lines.count
+                   && isTableSeparator(lines[peek + 1]))
+              {
+                index = peek
+                continue
+              }
+            }
             break
           }
           if isListItem(current)
@@ -573,7 +598,7 @@ struct ClipboardFormatter {
       let raw = line.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !raw.isEmpty else { continue }
 
-      if let match = regexMatch(#"^((?:[-*•])|(?:\d+[.)]))\s+(.*)$"#, in: raw) {
+      if let match = regexMatch(#"^((?:[-*•●])|(?:\d+[.)]))\s+(.*)$"#, in: raw) {
         if let current {
           items.append(current)
         }
@@ -646,6 +671,10 @@ struct ClipboardFormatter {
       return false
     }
 
+    if lastTokenLooksLikeURL(current), !first.isWhitespace {
+      return true
+    }
+
     switch last {
     case "/", "_", "-":
       return true
@@ -671,13 +700,61 @@ struct ClipboardFormatter {
       return true
     }
 
+    if endsWithKoreanConnective(current) {
+      return true
+    }
+
     // Terminal selections usually turn soft wraps into hard newlines.
     // Bias strongly toward rejoining contiguous paragraph lines, including CJK text.
-    if current.count < max(24, wrapWidth / 3), next.count < max(24, wrapWidth / 3) {
+    if displayWidth(current) < max(24, wrapWidth / 3),
+       displayWidth(next) < max(24, wrapWidth / 3)
+    {
       return false
     }
 
     return true
+  }
+
+  private func endsWithKoreanConnective(_ line: String) -> Bool {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    guard let last = trimmed.last else { return false }
+    let particles: Set<Character> = [
+      "을", "를", "이", "가", "은", "는", "의", "에", "도", "만",
+      "로", "과", "와", "나", "고", "며", "서", "면", "지", "야",
+      "된", "한", "할", "던", "들", "중", "때"
+    ]
+    return particles.contains(last)
+  }
+
+  private func lastTokenLooksLikeURL(_ s: String) -> Bool {
+    let tokens = s.split(whereSeparator: { $0 == " " || $0 == "\t" })
+    guard let last = tokens.last else { return false }
+    return last.contains("://")
+  }
+
+  private func isDollarPromptLine(_ line: String) -> Bool {
+    regexMatch(#"^\s*\$\s+\S"#, in: line) != nil
+  }
+
+  private func displayWidth(_ s: String) -> Int {
+    var width = 0
+    for scalar in s.unicodeScalars {
+      let v = scalar.value
+      if (0x1100 ... 0x115F).contains(v)
+        || (0x2E80 ... 0x9FFF).contains(v)
+        || (0xA000 ... 0xA4CF).contains(v)
+        || (0xAC00 ... 0xD7A3).contains(v)
+        || (0xF900 ... 0xFAFF).contains(v)
+        || (0xFE30 ... 0xFE4F).contains(v)
+        || (0xFF00 ... 0xFF60).contains(v)
+        || (0xFFE0 ... 0xFFE6).contains(v)
+      {
+        width += 2
+      } else {
+        width += 1
+      }
+    }
+    return width
   }
 
   private func blocksToText(_ blocks: [Block]) -> String {
@@ -767,7 +844,7 @@ struct ClipboardFormatter {
   }
 
   private func isListItem(_ line: String) -> Bool {
-    regexMatch(#"^\s*(?:[-*•]|\d+[.)])\s+"#, in: line) != nil
+    regexMatch(#"^\s*(?:[-*•●]|\d+[.)])\s+"#, in: line) != nil
   }
 
   private func isOrderedListItem(_ line: String) -> Bool {
@@ -820,7 +897,21 @@ struct ClipboardFormatter {
       return true
     }
 
+    if nonEmpty.contains(where: containsClaudeCodeToolMarker) {
+      return true
+    }
+
+    let dollarCount = nonEmpty.filter(isDollarPromptLine).count
+    if dollarCount >= 1, nonEmpty.count >= 2 {
+      return true
+    }
+
     return false
+  }
+
+  private func containsClaudeCodeToolMarker(_ line: String) -> Bool {
+    let trimmed = line.trimmingCharacters(in: .whitespaces)
+    return trimmed.hasPrefix("⏺") || trimmed.hasPrefix("⎿")
   }
 
   private func containsBoxDrawing(_ line: String) -> Bool {
@@ -851,6 +942,30 @@ struct ClipboardFormatter {
 
   private func containsShellPromptArrow(_ line: String) -> Bool {
     line.contains("❯") || line.contains("➜")
+  }
+
+  private func listContinuesAcrossBlank(prev: String, next: String) -> Bool {
+    let prevTrim = prev.trimmingCharacters(in: .whitespaces)
+    let nextTrim = next.trimmingCharacters(in: .whitespaces)
+    guard !prevTrim.isEmpty, !nextTrim.isEmpty else { return false }
+
+    let terminals: Set<Character> = [".", "!", "?", "。", "！", "？", "…"]
+    if let last = prevTrim.last, terminals.contains(last) {
+      return false
+    }
+
+    if endsWithKoreanConnective(prevTrim) {
+      return true
+    }
+
+    if let first = nextTrim.first,
+       first.isLetter, first.isLowercase,
+       first.isASCII
+    {
+      return true
+    }
+
+    return false
   }
 
   private func regexMatch(
