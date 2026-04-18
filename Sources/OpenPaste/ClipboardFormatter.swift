@@ -593,43 +593,52 @@ struct ClipboardFormatter {
   }
 
   private func normalizeListItems(_ lines: [String], meta: inout CleaningMeta, ordered: Bool) -> [String] {
-    var items: [String] = []
-    var current: String?
+    var items: [(marker: String, text: String)] = []
+    var current: (marker: String, text: String)?
 
     for line in lines {
       let raw = line.trimmingCharacters(in: .whitespacesAndNewlines)
       guard !raw.isEmpty else { continue }
 
       if let match = regexMatch(#"^((?:[-*•●])|(?:\d+[.)]))\s+(.*)$"#, in: raw) {
-        if let current {
-          items.append(current)
+        if let existing = current {
+          items.append(existing)
         }
-        current = capturedGroup(2, from: match, in: raw)
+        let marker = capturedGroup(1, from: match, in: raw) ?? ""
+        let text = capturedGroup(2, from: match, in: raw) ?? ""
+        current = (marker, text)
         meta.listItems += 1
         continue
       }
 
-      guard let existing = current else {
-        current = raw
+      guard var existing = current else {
+        current = ("", raw)
         meta.listItems += 1
         continue
       }
 
-      current = existing + " " + raw.trimmingCharacters(in: .whitespaces)
+      let trimmedRaw = raw.trimmingCharacters(in: .whitespaces)
+      if shouldJoinWithoutSpace(current: existing.text, next: trimmedRaw) {
+        existing.text += trimmedRaw
+      } else {
+        existing.text += " " + trimmedRaw
+      }
+      current = existing
       meta.joinedLineBreaks += 1
     }
 
-    if let current {
-      items.append(current)
+    if let existing = current {
+      items.append(existing)
     }
 
     if ordered {
       return items.enumerated().map { offset, item in
-        "\(offset + 1). \(item)"
+        let marker = item.marker.isEmpty ? "\(offset + 1)." : item.marker
+        return "\(marker) \(item.text)"
       }
     }
 
-    return items.map { "- \($0)" }
+    return items.map { "- \($0.text)" }
   }
 
   private func joinParagraphLines(_ lines: [String], meta: inout CleaningMeta, wrapWidth: Int) -> String {
@@ -702,15 +711,19 @@ struct ClipboardFormatter {
       return true
     }
 
+    if let last = current.last, last == ".",
+       let first = next.first, first.isNumber
+    {
+      return true
+    }
+
     if endsWithKoreanConnective(current) {
       return true
     }
 
-    // Terminal selections usually turn soft wraps into hard newlines.
-    // Bias strongly toward rejoining contiguous paragraph lines, including CJK text.
-    if displayWidth(current) < max(24, wrapWidth / 3),
-       displayWidth(next) < max(24, wrapWidth / 3)
-    {
+    // Truly fragmentary lines (both under ~8 Korean chars / 16 ASCII cols)
+    // are isolated list-like entries, not wrapped prose.
+    if displayWidth(current) < 16, displayWidth(next) < 16 {
       return false
     }
 
