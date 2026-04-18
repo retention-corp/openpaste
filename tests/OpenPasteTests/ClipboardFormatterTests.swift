@@ -542,6 +542,63 @@ import Testing
   #expect(result.cleanText == "- 첫 번째 불릿입니다.\n- 두 번째 불릿입니다.")
 }
 
+@Test func stripsClaudeCodeLeftBorderQuarterBlock() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    의도 라우팅 레이어'를 한국에서
+    \u{258E} 선점한다는 뜻인가요, 아니면 단순히 유저
+    """
+  )
+  #expect(result.cleanText.contains("\u{258E}") == false)
+  #expect(
+    result.cleanText == "의도 라우팅 레이어'를 한국에서 선점한다는 뜻인가요, 아니면 단순히 유저"
+  )
+}
+
+@Test func stripsPerLineLeftBorderAcrossParagraph() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    \u{258E} 참고하신 twocents.xyz 글의 실제 moat 주장은
+    \u{258E} 빠른 스케일업이 아니라 의도 분배권(intent
+    \u{258E} distribution rights) 선점입니다.
+    """
+  )
+  #expect(result.cleanText.contains("\u{258E}") == false)
+  #expect(result.cleanText.contains("intent distribution rights"))
+  #expect(result.cleanText.contains("\n") == false)
+}
+
+@Test func stripsBoxVerticalBorderOutsideTreeContext() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    한국에서 빠르게 성장하는 핵심은
+    │ 의도 라우팅 레이어 선점입니다.
+    """
+  )
+  #expect(result.cleanText.contains("│") == false)
+  #expect(
+    result.cleanText == "한국에서 빠르게 성장하는 핵심은 의도 라우팅 레이어 선점입니다."
+  )
+}
+
+@Test func preservesBoxVerticalInsideTreeStructure() async throws {
+  let formatter = ClipboardFormatter()
+  let result = formatter.cleanPlainText(
+    """
+    Sources
+    ├── OpenPaste
+    │   ├── AppDelegate.swift
+    │   └── ClipboardFormatter.swift
+    └── tests
+    """
+  )
+  #expect(result.cleanText.contains("│   ├── AppDelegate.swift"))
+  #expect(result.cleanText.contains("│   └── ClipboardFormatter.swift"))
+}
+
 @Test func recognizesBlackCircleBulletAsListMarker() async throws {
   let formatter = ClipboardFormatter()
   let result = formatter.cleanPlainText(
@@ -674,6 +731,22 @@ import Testing
      $ swift build
      Building for debugging...
      Build complete!
+     """),
+    ("claude-code-left-border-U258E",
+     """
+     의도 라우팅 레이어'를 한국에서
+     \u{258E} 선점한다는 뜻인가요, 아니면 단순히 유저
+     """),
+    ("claude-code-left-border-every-line",
+     """
+     \u{258E} 참고하신 twocents.xyz 글의 실제 moat 주장은
+     \u{258E} 빠른 스케일업이 아니라 의도 분배권(intent
+     \u{258E} distribution rights) 선점입니다.
+     """),
+    ("claude-code-left-border-box-vertical",
+     """
+     한국에서 빠르게 성장하는 핵심은
+     │ 의도 라우팅 레이어 선점입니다.
      """),
   ]
 

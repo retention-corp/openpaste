@@ -118,7 +118,9 @@ struct ClipboardFormatter {
     var meta = CleaningMeta()
     let normalized = normalizeInput(input, meta: &meta)
     let lines = sanitizeTerminalSelectionLines(
-      trimTrailingWhitespace(normalized.components(separatedBy: "\n"))
+      stripLeftBorderPrefixes(
+        trimTrailingWhitespace(normalized.components(separatedBy: "\n"))
+      )
     )
     let wrapDetection = detectWrapWidth(lines)
     meta.wrapWidth = wrapDetection.width
@@ -942,6 +944,50 @@ struct ClipboardFormatter {
 
   private func containsShellPromptArrow(_ line: String) -> Bool {
     line.contains("❯") || line.contains("➜")
+  }
+
+  private func stripLeftBorderPrefixes(_ lines: [String]) -> [String] {
+    lines.map(stripLeftBorderPrefix)
+  }
+
+  private func stripLeftBorderPrefix(_ line: String) -> String {
+    let scalars = Array(line.unicodeScalars)
+    var i = 0
+    while i < scalars.count, scalars[i].properties.isWhitespace {
+      i += 1
+    }
+    let afterLeadingWS = i
+
+    while i < scalars.count {
+      let v = scalars[i].value
+      if (0x2588 ... 0x258F).contains(v) {
+        i += 1
+        continue
+      }
+      if v == 0x2502 {
+        let remainderScalars = scalars[(i + 1)...]
+        let remainder = String(String.UnicodeScalarView(remainderScalars))
+        let treeChars: Set<Character> = ["├", "└", "┌", "┐", "┬", "┴", "┼", "─", "━", "│"]
+        if remainder.contains(where: { treeChars.contains($0) }) {
+          break
+        }
+        i += 1
+        continue
+      }
+      break
+    }
+
+    if i == afterLeadingWS {
+      return line
+    }
+
+    while i < scalars.count, scalars[i].properties.isWhitespace {
+      i += 1
+    }
+
+    let leading = String(String.UnicodeScalarView(scalars[0 ..< afterLeadingWS]))
+    let remainder = String(String.UnicodeScalarView(scalars[i...]))
+    return leading + remainder
   }
 
   private func listContinuesAcrossBlank(prev: String, next: String) -> Bool {
