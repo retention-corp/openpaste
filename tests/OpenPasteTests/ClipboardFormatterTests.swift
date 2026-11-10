@@ -503,6 +503,123 @@ import Testing
   #expect(result.cleanText.contains("open paste") == false)
 }
 
+@Test func exactSpacingBoundaryAuditForLongPaste() async throws {
+  let formatter = ClipboardFormatter()
+  let fixtures: [(name: String, input: String, expected: String)] = [
+    (
+      "bare-domain-dot-wrap",
+      "공식 사이트는 retention.\nkr 에서 확인합니다.",
+      "공식 사이트는 retention.kr 에서 확인합니다."
+    ),
+    (
+      "email-domain-dot-wrap",
+      "문의는 hello@example.\ncom 으로 보내주세요.",
+      "문의는 hello@example.com 으로 보내주세요."
+    ),
+    (
+      "file-extension-dot-wrap",
+      "설정 파일은 README.\nmd 옆에 있습니다.",
+      "설정 파일은 README.md 옆에 있습니다."
+    ),
+    (
+      "swift-member-dot-wrap",
+      "`ClipboardFormatter.\ncleanPlainText` 함수가 처리합니다.",
+      "`ClipboardFormatter.cleanPlainText` 함수가 처리합니다."
+    ),
+    (
+      "closing-comma-wrap",
+      "이 문장은 줄 끝에서 쉼표가\n, 다음 줄로 넘어간 경우입니다.",
+      "이 문장은 줄 끝에서 쉼표가, 다음 줄로 넘어간 경우입니다."
+    ),
+    (
+      "closing-period-wrap",
+      "마침표도 줄 시작으로\n. 밀릴 수 있습니다.",
+      "마침표도 줄 시작으로. 밀릴 수 있습니다."
+    ),
+    (
+      "closing-paren-wrap",
+      "함수 호출은 `clean(\npayload:)` 형태입니다.",
+      "함수 호출은 `clean(payload:)` 형태입니다."
+    ),
+    (
+      "opening-paren-wrap",
+      "AI(\n인공지능) 표기를 유지합니다.",
+      "AI(인공지능) 표기를 유지합니다."
+    ),
+    (
+      "percent-wrap",
+      "전환율은 40\n% 이상입니다.",
+      "전환율은 40% 이상입니다."
+    ),
+    (
+      "hash-tag-wrap",
+      "태그는 #Open\nPaste 로 적었습니다.",
+      "태그는 #OpenPaste 로 적었습니다."
+    ),
+    (
+      "mention-wrap",
+      "담당자는 @simpson\nkorea 입니다.",
+      "담당자는 @simpsonkorea 입니다."
+    ),
+    (
+      "english-word-suffix-wrap",
+      "The term is internationali\nzation in this paragraph.",
+      "The term is internationalization in this paragraph."
+    ),
+    (
+      "english-gerund-suffix-wrap",
+      "The process keeps normaliz\ning copied text.",
+      "The process keeps normalizing copied text."
+    ),
+    (
+      "english-normal-word-boundary",
+      "This paragraph was wrapped by the terminal\ncontinues on the next line.",
+      "This paragraph was wrapped by the terminal continues on the next line."
+    ),
+    (
+      "korean-mid-eojeol-jaga",
+      "비개발\n자가 쉽게 이해할 수 있어야 합니다.",
+      "비개발자가 쉽게 이해할 수 있어야 합니다."
+    ),
+    (
+      "korean-productization-suffix",
+      "프로덕트\n화 단계에서 다시 검증합니다.",
+      "프로덕트화 단계에서 다시 검증합니다."
+    ),
+    (
+      "korean-adverb-suffix",
+      "문제\n없이 붙여넣어야 합니다.",
+      "문제없이 붙여넣어야 합니다."
+    ),
+    (
+      "korean-normal-word-boundary",
+      "한국어 문장이\n길어서 다음 줄로 넘어갑니다.",
+      "한국어 문장이 길어서 다음 줄로 넘어갑니다."
+    ),
+  ]
+
+  var failures: [String] = []
+  for fixture in fixtures {
+    let output = formatter.cleanPlainText(fixture.input).cleanText
+    if output != fixture.expected {
+      failures.append(
+        "[\(fixture.name)]\n  input: \(fixture.input.debugDescription)\n  expected: \(fixture.expected.debugDescription)\n  actual: \(output.debugDescription)"
+      )
+    }
+  }
+
+  if !failures.isEmpty {
+    print("\n===== EXACT SPACING BOUNDARY FAILURES =====")
+    for failure in failures {
+      print(failure)
+      print("")
+    }
+    print("===== END EXACT SPACING BOUNDARY FAILURES =====\n")
+  }
+
+  #expect(failures.isEmpty)
+}
+
 @Test func preservesClaudeCodeToolMarkerBlock() async throws {
   let formatter = ClipboardFormatter()
   let result = formatter.cleanPlainText(

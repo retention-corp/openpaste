@@ -674,6 +674,9 @@ struct ClipboardFormatter {
   }
 
   private func shouldJoinWithoutSpace(current: String, next: String) -> Bool {
+    let current = current.trimmingCharacters(in: .whitespaces)
+    let next = next.trimmingCharacters(in: .whitespaces)
+
     guard let last = current.last, let first = next.first else {
       return false
     }
@@ -682,25 +685,51 @@ struct ClipboardFormatter {
       return false
     }
 
+    if leftBindingPrefixCharacters.contains(first) {
+      return true
+    }
+
+    if rightBindingSuffixCharacters.contains(last) {
+      return true
+    }
+
     if lastTokenLooksLikeURL(current), !first.isWhitespace {
       return true
     }
 
     switch last {
-    case "/", "_", "-":
+    case "/", "_", "-", "#", "@":
       return true
     case ".":
-      return first.isNumber
+      return first.isNumber || isDotContinuation(current: current, next: next)
     case ":":
       return first == "/"
     default:
-      return false
+      break
     }
+
+    if lastTokenLooksLikeHandleOrHashtag(current), first.isLetter || first.isNumber || first == "_" {
+      return true
+    }
+
+    if isEnglishSuffixContinuation(current: current, next: next) {
+      return true
+    }
+
+    if isKoreanSuffixContinuation(current: current, next: next) {
+      return true
+    }
+
+    return false
   }
 
   private func shouldJoinParagraphLine(current: String, next: String, wrapWidth: Int) -> Bool {
     guard !current.isEmpty, !next.isEmpty else {
       return false
+    }
+
+    if shouldJoinWithoutSpace(current: current, next: next) {
+      return true
     }
 
     if let first = next.first, ",.;:)]".contains(first) {
@@ -742,9 +771,123 @@ struct ClipboardFormatter {
   }
 
   private func lastTokenLooksLikeURL(_ s: String) -> Bool {
-    let tokens = s.split(whereSeparator: { $0 == " " || $0 == "\t" })
-    guard let last = tokens.last else { return false }
+    guard let last = lastToken(in: s) else { return false }
     return last.contains("://")
+  }
+
+  private var leftBindingPrefixCharacters: Set<Character> {
+    [",", ".", ";", ":", "!", "?", "%", ")", "]", "}", ">", "”", "’", "。", "，", "、", "；", "：", "！", "？", "）", "】", "」", "』", "》"]
+  }
+
+  private var rightBindingSuffixCharacters: Set<Character> {
+    ["(", "[", "{", "<", "`", "\"", "'", "“", "‘", "#", "@", "$", "₩", "€", "£", "¥"]
+  }
+
+  private func lastToken(in s: String) -> Substring? {
+    s.split(whereSeparator: { $0 == " " || $0 == "\t" }).last
+  }
+
+  private func leadingToken(in s: String) -> Substring? {
+    s.split(whereSeparator: { $0 == " " || $0 == "\t" }).first
+  }
+
+  private func isDotContinuation(current: String, next: String) -> Bool {
+    guard let currentToken = lastToken(in: current),
+          let nextToken = leadingToken(in: next)
+    else {
+      return false
+    }
+
+    let cleanedNext = nextToken
+      .trimmingCharacters(in: CharacterSet(charactersIn: "`'\"()[]{}<>.,;:!?"))
+    let lowerNext = cleanedNext.lowercased()
+
+    if currentToken.contains("@") {
+      return true
+    }
+
+    if currentToken.contains("`") {
+      return true
+    }
+
+    let currentTokenBody = currentToken.trimmingCharacters(
+      in: CharacterSet(charactersIn: "`'\"()[]{}<>.,;:!?")
+    )
+    let currentLooksLikeTypeOrMember =
+      currentTokenBody.contains(where: { $0.isUppercase })
+      && currentTokenBody.contains(where: { $0.isLowercase })
+    let nextStartsLikeMember = cleanedNext.first?.isLowercase == true
+    if currentLooksLikeTypeOrMember && nextStartsLikeMember {
+      return true
+    }
+
+    let dotContinuationTokens: Set<String> = [
+      "ai", "app", "biz", "co", "com", "css", "dev", "gif", "go", "gz",
+      "html", "io", "java", "jpeg", "jpg", "js", "json", "kr", "kt", "md",
+      "net", "org", "pdf", "php", "png", "py", "rb", "rs", "sh", "swift",
+      "tar", "toml", "ts", "txt", "yaml", "yml", "zip"
+    ]
+    return dotContinuationTokens.contains(lowerNext)
+  }
+
+  private func lastTokenLooksLikeHandleOrHashtag(_ s: String) -> Bool {
+    guard let token = lastToken(in: s) else { return false }
+    return token.hasPrefix("#") || token.hasPrefix("@")
+  }
+
+  private func isEnglishSuffixContinuation(current: String, next: String) -> Bool {
+    guard
+      let currentWord = capturedGroupFromPattern(#"([A-Za-z]{4,})$"#, in: current),
+      let nextWord = capturedGroupFromPattern(#"^([A-Za-z]{2,})"#, in: next)
+    else {
+      return false
+    }
+
+    let suffixes: Set<String> = [
+      "able", "ance", "ant", "ation", "ed", "ence", "ent", "er", "ers",
+      "est", "ful", "hood", "ible", "ing", "ings", "isation", "ise", "ism",
+      "ist", "ity", "ive", "ize", "ization", "less", "ly", "ment", "ness",
+      "ous", "ship", "sion", "tion", "ward", "wise", "zation"
+    ]
+
+    return currentWord.count >= 4 && suffixes.contains(nextWord.lowercased())
+  }
+
+  private func isKoreanSuffixContinuation(current: String, next: String) -> Bool {
+    guard let last = current.last, isHangulSyllable(last), !endsWithKoreanConnective(current) else {
+      return false
+    }
+    guard let nextToken = leadingToken(in: next) else {
+      return false
+    }
+
+    let cleanedNext = String(nextToken)
+      .trimmingCharacters(in: CharacterSet(charactersIn: "`'\"()[]{}<>.,;:!?"))
+    guard !cleanedNext.isEmpty else {
+      return false
+    }
+
+    let exactSuffixes: Set<String> = ["화"]
+    if exactSuffixes.contains(cleanedNext) {
+      return true
+    }
+
+    let suffixPrefixes = [
+      "가량", "까지", "께서", "님", "대로", "들", "마다", "마저", "밖에",
+      "부터", "보다", "뿐", "스럽", "식", "없이", "에게", "와", "으로",
+      "이다", "이며", "이고", "입니다", "였다", "였고", "처럼", "조차",
+      "자가", "자는", "자를", "자에게", "자와", "자로", "자도", "자들",
+      "적", "적으로", "화가", "화된", "화되", "화를", "화로", "화에", "화하"
+    ]
+
+    return suffixPrefixes.contains { cleanedNext.hasPrefix($0) }
+  }
+
+  private func isHangulSyllable(_ character: Character) -> Bool {
+    guard let scalar = character.unicodeScalars.first else {
+      return false
+    }
+    return (0xAC00 ... 0xD7A3).contains(scalar.value)
   }
 
   private func isDollarPromptLine(_ line: String) -> Bool {
@@ -1037,6 +1180,13 @@ struct ClipboardFormatter {
     }
     let range = NSRange(value.startIndex..<value.endIndex, in: value)
     return regex.firstMatch(in: value, options: [], range: range)
+  }
+
+  private func capturedGroupFromPattern(_ pattern: String, in value: String) -> String? {
+    guard let match = regexMatch(pattern, in: value) else {
+      return nil
+    }
+    return capturedGroup(1, from: match, in: value)
   }
 
   private func capturedGroup(_ index: Int, from match: NSTextCheckingResult, in value: String) -> String? {
